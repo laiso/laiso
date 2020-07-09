@@ -1,4 +1,1 @@
-# 餃
-# 子
-# の
-# 王
+<blockquote class="twitter-tweet"><p lang="ja" dir="ltr">がんばれ東北 がんばろう日本 目を見て話せlaiso</p>&mdash; laiso (@laiso) <a href="https://twitter.com/laiso/status/73780409162416128?ref_src=twsrc%5Etfw">May 26, 2011</a></blockquote>
