@@ -18,7 +18,31 @@ jobs:
         with:
           ruby-version: '3.2'
       - name: Generate contributed_users.md
+        env:
+          PERSONAL_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
+          ACTIONS_TOKEN: ${{ github.token }}
         run: |
+          pick_token() {
+            for candidate in "$PERSONAL_TOKEN" "$ACTIONS_TOKEN"; do
+              [ -z "$candidate" ] && continue
+              login=$(curl -sS \
+                -H "Authorization: bearer $candidate" \
+                -H "Content-Type: application/json" \
+                https://api.github.com/graphql \
+                -d '{"query":"{ viewer { login } }"}' \
+                | jq -r '.data.viewer.login // empty')
+              if [ -n "$login" ]; then
+                echo "Authenticated as $login" >&2
+                printf '%s' "$candidate"
+                return 0
+              fi
+            done
+            echo "No working GitHub token. Refresh secrets.PERSONAL_TOKEN (classic PAT with read:user)." >&2
+            return 1
+          }
+          export GITHUB_TOKEN
+          GITHUB_TOKEN="$(pick_token)"
+
           git clone --depth 1 https://github.com/tarao/oss-contributions.git tool
           cd tool
           # Trim heavy GraphQL fields to stay under GitHub's query resource limit
@@ -28,7 +52,9 @@ jobs:
           # Stay on graphql 1.x so graphql-client 0.16 keeps working; 2.x breaks result.data.
           printf '\ngem "graphql", "~> 1.13.23"\n' >> Gemfile
           bundle update graphql
-          GITHUB_TOKEN="${{ secrets.PERSONAL_TOKEN }}" bundle exec ruby oss_contributions.rb \
+          # Guard against nil result.data (bad token / GraphQL errors)
+          sed -i 's/unless result\.data\.user/unless result.data\&.user/' github_api.rb
+          bundle exec ruby oss_contributions.rb \
             -u "${{ github.repository_owner }}" \
             --render=templates/users.md.erb \
             > "$GITHUB_WORKSPACE/oss-contributions-output/contributed_users.md"
