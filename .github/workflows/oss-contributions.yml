@@ -24,7 +24,10 @@ jobs:
           # Trim heavy GraphQL fields to stay under GitHub's query resource limit
           # (see .github/patches/oss-contributions-lite-query.patch)
           git apply "$GITHUB_WORKSPACE/.github/patches/oss-contributions-lite-query.patch"
+          # Lockfile pins graphql 1.11.2, which crashes on Ruby 3.2+ (Refinement#include removed).
+          # Bump graphql-client (and graphql) the same way as a local regen.
           bundle install
+          bundle update graphql graphql-client
           GITHUB_TOKEN="${{ secrets.PERSONAL_TOKEN }}" bundle exec ruby oss_contributions.rb \
             -u "${{ github.repository_owner }}" \
             --render=templates/users.md.erb \
