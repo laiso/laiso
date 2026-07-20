@@ -1,0 +1,38 @@
+name: OSS contributions
+
+on:
+  schedule: # monthly
+    - cron: '52 3 13 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+      - name: Generate contributed_users.md
+        run: |
+          git clone --depth 1 https://github.com/tarao/oss-contributions.git tool
+          cd tool
+          # Trim heavy GraphQL fields to stay under GitHub's query resource limit
+          # (see .github/patches/oss-contributions-lite-query.patch)
+          git apply "$GITHUB_WORKSPACE/.github/patches/oss-contributions-lite-query.patch"
+          bundle install
+          GITHUB_TOKEN="${{ secrets.PERSONAL_TOKEN }}" bundle exec ruby oss_contributions.rb \
+            -u "${{ github.repository_owner }}" \
+            --render=templates/users.md.erb \
+            > "$GITHUB_WORKSPACE/oss-contributions-output/contributed_users.md"
+      - name: Commit if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add oss-contributions-output/contributed_users.md
+          git diff --cached --quiet || git commit -m 'Update OSS contributions'
+          git push

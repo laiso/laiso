@@ -1,0 +1,86 @@
+diff --git a/github_api.rb b/github_api.rb
+index 366a34b..8234b19 100644
+--- a/github_api.rb
++++ b/github_api.rb
+@@ -59,32 +59,9 @@ module GitHubAPI
+       isDisabled
+       isLocked
+       isPrivate
+-      collaborators(query: $login) {
+-        edges {
+-          permission
+-        }
+-      }
+       stargazers(first: 0) {
+         totalCount
+       }
+-      languages(first: 10, orderBy: { field: SIZE, direction: DESC }) {
+-        totalSize
+-        edges {
+-          size
+-          node {
+-            color
+-            name
+-          }
+-        }
+-      }
+-      repositoryTopics(first: 10) {
+-        nodes {
+-          topic {
+-            name
+-          }
+-          url
+-        }
+-      }
+       url
+     }
+   GRAPHQL
+@@ -120,25 +97,12 @@ module GitHubAPI
+   def self.role_of_repository(user, repository)
+     if repository.owner.login == user
+       'owner'
+-    elsif repository.collaborators && repository.collaborators.edges[0]
+-      case repository.collaborators.edges[0].permission
+-      when 'ADMIN' then
+-        'maintainer'
+-      when 'MAINTAIN' then
+-        'maintainer'
+-      when 'WRITE' then
+-        'collaborator'
+-      else
+-        'contributor'
+-      end
+     else
+       'contributor'
+     end
+   end
+ 
+   def self.repository_to_hash(user, repository)
+-    size = repository.languages.total_size
+-    size = 1 if size <= 0
+     {
+       'name' =>        repository.name_with_owner,
+       'description' => repository.description,
+@@ -152,20 +116,8 @@ module GitHubAPI
+       ].any?,
+       'role' =>        self.role_of_repository(user, repository),
+       'stargazers' =>  repository.stargazers.total_count,
+-      'languages' =>   repository.languages.edges.map do |l|
+-        {
+-          'name' =>     l.node.name,
+-          'color' =>    l.node.color,
+-          'size' =>     l.size,
+-          'coverage' => (l.size * 1.0 / size * 100).to_i,
+-        }
+-      end,
+-      'topics' =>      repository.repository_topics.nodes.map do |t|
+-        {
+-          'name' => t.topic.name,
+-          'url' =>  t.url,
+-        }
+-      end,
++      'languages' =>   [],
++      'topics' =>      [],
+     }
+   end
+ 
