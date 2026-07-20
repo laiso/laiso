@@ -1,8 +1,10 @@
 name: OSS contributions
 
 on:
-  schedule: # monthly
-    - cron: '52 3 13 * *'
+  # Disabled until Actions regen is reliable (GitHub GraphQL sometimes returns
+  # "Something went wrong while executing your query"). Local output is checked in.
+  # schedule:
+  #   - cron: '52 3 13 * *'
   workflow_dispatch:
 
 permissions:
@@ -54,10 +56,17 @@ jobs:
           bundle update graphql
           # Guard against nil result.data (bad token / GraphQL errors)
           sed -i 's/unless result\.data\.user/unless result.data\&.user/' github_api.rb
+          out="$GITHUB_WORKSPACE/oss-contributions-output/contributed_users.md"
           bundle exec ruby oss_contributions.rb \
             -u "${{ github.repository_owner }}" \
             --render=templates/users.md.erb \
-            > "$GITHUB_WORKSPACE/oss-contributions-output/contributed_users.md"
+            > "$out"
+          # Refuse empty/failed output so we never wipe a good checked-in file
+          if ! grep -qE 'Repositories</th><td align="right">[1-9]' "$out"; then
+            echo "Generation produced empty results; refusing to commit." >&2
+            head -30 "$out" >&2 || true
+            exit 1
+          fi
       - name: Commit if changed
         run: |
           git config user.name 'github-actions[bot]'
